@@ -1,0 +1,19 @@
+services:
+  docusrv:
+    build: .
+    image: docusrv:latest
+    container_name: docusrv
+    hostname: docusrv
+    restart: unless-stopped
+    ports:
+      - "80:8080"
+    environment:
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD muss gesetzt sein}
+      SECRET_KEY: ${SECRET_KEY:-}
+      MAX_UPLOAD_MB: 1024
+    volumes:
+      - docusrv-data:/data
+
+volumes:
+  docusrv-data:

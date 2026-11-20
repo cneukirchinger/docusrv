@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Docusrv – Verwaltung{% endblock %}
+{% block content %}
+<h1>Docusrv – Verwaltung</h1>
+<p class="muted">Schulungsunterlagen (Quarto-Website) als ZIP hochladen. <a href="/">Zur Website →</a></p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+{% endwith %}
+
+<div class="card">
+  <h2>Neue Unterlagen hochladen</h2>
+  <form id="upload-form" method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data"
+        onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Wird hochgeladen …'">
+    <input type="file" name="file" accept=".zip,application/zip" required>
+    <span class="muted">oder ZIP-Datei einfach ins Browserfenster ziehen</span><br>
+    <button type="submit">Hochladen &amp; veröffentlichen</button>
+  </form>
+  <p class="muted" style="margin-bottom:0">Das ZIP muss eine <code>index.html</code> enthalten – direkt oder in einem einzelnen Unterordner (z.&nbsp;B. <code>_site/</code>). Max. {{ max_mb }} MB.</p>
+</div>
+
+<div class="card">
+  <h2>Versionen</h2>
+  {% if versions %}
+  <table>
+    {% for v in versions %}
+    <tr>
+      <td>{{ v.name }}<br><span class="muted filename">{{ v.filename or "–" }}</span></td>
+      <td>{% if v.current %}<span class="badge">aktiv</span>{% else %}
+        <form method="post" action="{{ url_for('activate', name=v.name) }}" style="margin:0">
+          <button class="secondary" type="submit">Wiederherstellen</button>
+        </form>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="muted" style="margin-bottom:0">Die aktive und die jeweils vorherige Version werden aufbewahrt.</p>
+  {% else %}<p class="muted">Noch keine Version vorhanden.</p>{% endif %}
+</div>
+
+<div id="drop-overlay" hidden><div>ZIP-Datei hier ablegen zum Hochladen</div></div>
+<script>
+(function () {
+  const form = document.getElementById('upload-form');
+  const input = form.querySelector('input[type=file]');
+  const overlay = document.getElementById('drop-overlay');
+  let depth = 0;
+  const hasFiles = e => e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
+  const hide = () => { depth = 0; overlay.hidden = true; };
+
+  window.addEventListener('dragenter', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); depth++; overlay.hidden = false;
+  });
+  window.addEventListener('dragover', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('dragleave', e => {
+    if (!hasFiles(e)) return;
+    if (--depth <= 0) hide();
+  });
+  window.addEventListener('drop', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); hide();
+    const files = e.dataTransfer.files;
+    if (files.length !== 1) { alert('Bitte genau eine ZIP-Datei ablegen.'); return; }
+    if (!files[0].name.toLowerCase().endsWith('.zip')) { alert('Bitte eine .zip-Datei ablegen.'); return; }
+    if (form.querySelector('button').disabled) return;  // Upload läuft bereits
+    input.files = files;
+    form.requestSubmit();
+  });
+})();
+</script>
+{% endblock %}
